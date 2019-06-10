@@ -1,0 +1,26 @@
+未筛选特征
+一:
+未筛选特征
+clf = SGDClassifier(alpha=1e-3,n_jobs=2,max_iter=5)
+
+[Parallel(n_jobs=1)]: Done   5 out of   5 | elapsed:  4.5min finished
+[0.10714058 0.10098582 0.09899499 0.09845496 0.10193334]
+
+二:
+未筛选特征
+clf = SGDClassifier(alpha=1e-3,random_state=42, n_jobs=2,max_iter=5)
+
+[Parallel(n_jobs=1)]: Done   5 out of   5 | elapsed:  4.5min finished
+[0.10920243 0.10365599 0.10037941 0.10066216 0.10722873]
+
+三:
+clf = MultinomialNB()
+
+[Parallel(n_jobs=1)]: Done   5 out of   5 | elapsed:   27.5s finished
+[0.14229038 0.14389973 0.14023228 0.14184582 0.14181677]
+
+四:
+clf = LinearSVC(verbose=1)
+
+[Parallel(n_jobs=1)]: Done   5 out of   5 | elapsed: 35.3min finished
+[LibLinear][LibLinear][LibLinear][LibLinear][LibLinear][0.14245255 0.13921389 0.13634547 0.13487663 0.13853757]
