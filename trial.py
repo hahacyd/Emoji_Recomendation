@@ -51,7 +51,7 @@ def main():
     # clf = MultinomialNB()
     # clf = LinearSVC(verbose=1)
     clf = DecisionTreeClassifier()
-    
+     
     # clf.fit(X, y)
     # joblib.dump(clf,"model/dump/svm_emotion.pkl")
     

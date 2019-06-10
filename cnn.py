@@ -11,8 +11,12 @@ from sklearn.model_selection import cross_val_score, train_test_split
 from labelencode import KaggleLabelEncode
 from gensim.models import word2vec
 from word2vec_lac import getCnnTrainData
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-device = torch.device("cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+if torch.cuda.is_available():
+    print("gpu")
+else:
+    print("cpu")
+# device = torch.device("cpu")
 def getEmbed_lookup():
     model = word2vec.Word2Vec.load("model/dump/word2vec_32d.model")
     # inputs = transform_to_matrix2(model, file, padding_size=12)
@@ -76,12 +80,13 @@ class SentimentCNN(nn.Module):
             self.embedding.requires_grad = False
         
         # 2. convolutional layers
-        self.convs_1d = nn.ModuleList([
-            nn.Conv2d(1, num_filters, (k, embedding_dim), padding=k-2) 
-            for k in kernel_sizes])
+        # self.convs_1d = nn.ModuleList([
+        #     nn.Conv2d(1, num_filters, (k, embedding_dim), padding=k-2) 
+        #     for k in kernel_sizes])
         
+        self.conv2d = nn.Conv2d(1,num_filters,(2,embedding_dim))
         # 3. final, fully-connected layer for classification
-        self.fc = nn.Linear(len(kernel_sizes) * num_filters, output_size) 
+        self.fc = nn.Linear(num_filters, output_size) 
         
         # 4. dropout and sigmoid layers
         self.dropout = nn.Dropout(drop_prob)
@@ -95,7 +100,8 @@ class SentimentCNN(nn.Module):
         """
         # squeeze last dim to get size: (batch_size, num_filters, conv_seq_length)
         # conv_seq_length will be ~ 200
-        x = F.relu(conv(x))
+        x = conv(x)
+        x = F.relu(x)
         x = x.squeeze(3)
         
         # 1D pool over conv_seq_length
@@ -111,16 +117,26 @@ class SentimentCNN(nn.Module):
         """
         # embedded vectors
         # x = torch.LongTensor(x)
-        embeds = self.embedding(x.long()) # (batch_size, seq_length, embedding_dim)
+        embeds = self.embedding(x) # (batch_size, seq_length, embedding_dim)
         # embeds.unsqueeze(1) creates a channel dimension that conv layers expect
         embeds = embeds.unsqueeze(1)
         
         # get output of each conv-pool layer
-        conv_results = [self.conv_and_pool(embeds, conv) for conv in self.convs_1d]
+        # conv_results = [self.conv_and_pool(embeds, conv) for conv in self.convs_1d]
+        x = self.conv2d(embeds)
+        x = F.relu(x)
+        x = x.squeeze(3)
+        
+        # 1D pool over conv_seq_length
+        # squeeze to get size: (batch_size, num_filters)
+        x_max = F.max_pool1d(x, x.size(2))
+        x_max = x_max.squeeze(2)
+
+        conv_results = x_max
         
         # concatenate results and add dropout
-        x = torch.cat(conv_results, 1)
-        x = self.dropout(x)
+        # x = torch.cat(conv_results, 1)
+        x = self.dropout(conv_results)
         
         # final logit
         logit = self.fc(x) 
@@ -199,7 +215,7 @@ kernel_sizes = [3,4,5]
 net = SentimentCNN(embed_lookup,vocab_size,output_size,embedding_dim)
 
 net = net.to(device)
-print(net)
+# print(net)
 criterion = nn.CrossEntropyLoss()
 
 optimizer = optim.SGD(net.parameters(), lr=1e-2,momentum=0.9)
@@ -211,7 +227,7 @@ def train_CNN():
  
     running_loss = 0.0  
 
-    dataset = Data.TensorDataset(torch.from_numpy(trainX),torch.from_numpy(trainy))
+    dataset = Data.TensorDataset(torch.from_numpy(trainX).long(),torch.from_numpy(trainy).long())
     data_loader = Data.DataLoader(dataset, shuffle=True, batch_size=BATCH_SIZE)
     
     for batch_index, (inputs, labels) in enumerate(data_loader, 0):
@@ -225,7 +241,8 @@ def train_CNN():
 
         loss.backward()
         optimizer.step()
-        print("[ %d/%d ] loss = %f" % (batch_index, batch_index * BATCH_SIZE / len(dataset), running_loss))
+        if batch_index % 100 == 0:
+            print("[ %d/%d ] loss = %f" % (batch_index, len(dataset) / BATCH_SIZE, running_loss))
     
 
 def test_CNN():
