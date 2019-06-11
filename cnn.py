@@ -13,12 +13,20 @@ from labelencode import KaggleLabelEncode
 from gensim.models import word2vec
 from word2vec_lac import getCnnTrainData
 import time
+import math
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 if torch.cuda.is_available():
     print("gpu")
 else:
     print("cpu")
 # device = torch.device("cpu")
+def batch_data(X,batch_size = 100):
+    length = X.shape[0]
+    for_times = math.floor(length / 100)
+
+    for i in range(for_times):
+        yield X[i * batch_size:(i + 1) * batch_size]
+    yield X[for_times * batch_size :]
 def getEmbed_lookup():
     model = word2vec.Word2Vec.load("model/dump/word2vec_32d.model")
     return model.wv
@@ -113,7 +121,7 @@ vocab_size = len(embed_lookup.vocab)
 output_size = 72
 embedding_dim = embed_lookup.vector_size
 num_filters = 100
-kernel_sizes = [3]
+kernel_sizes = [3,4,5]
 
 BATCH_SIZE=100
 X, y = kaggle_preprocessing()
@@ -151,35 +159,65 @@ def train_CNN():
         if batch_index != 0 and batch_index % 100 == 0:
             print("[ %d/%d ] loss = %f" % (batch_index / intervel, len(dataset) / (intervel * BATCH_SIZE), running_loss/BATCH_SIZE))    
             running_loss = 0.0
-    torch.save(net,"model/dump/net_3_adam.model")
+    torch.save(net,"model/dump/net_345_adam.model")
 
 def test_CNN():
-    model = torch.load("model/dump/net_3_adam.model")
+    model = torch.load("model/dump/net_345_adam.model",map_location=device)
     model.eval()
 
-    dataset = Data.TensorDataset(torch.from_numpy(testX).long(),torch.from_numpy(testy))
-    data_loader = Data.DataLoader(dataset, shuffle=True, batch_size=BATCH_SIZE)
-    score = 0.0
-    for batch_index, (inputs, labels) in enumerate(data_loader, 0):
-        inputs, labels = inputs.to(device), labels
+    # dataset = Data.TensorDataset(torch.from_numpy(testX).long(),torch.from_numpy(testy))
+    # data_loader = Data.DataLoader(dataset, shuffle=True, batch_size=BATCH_SIZE)
+    # score = 0.0
+    # # record = np.empty(0)
+    # for batch_index, (inputs, labels) in enumerate(data_loader, 0):
+    #     print(np.sum(labels.numpy() == testy[batch_index * BATCH_SIZE:(batch_index + 1)*BATCH_SIZE]))
+
+    #     inputs = inputs.to(device)
+        
+    #     ypred = model(inputs)
+    #     ypred = ypred.cpu().detach().numpy()
+
+    #     ypred = ypred.argmax(axis = 1)
+
+    #     # record = np.hstack([record,ypred])
+
+    #     labels = labels.numpy()
+
+    #     score += f1_score(labels,ypred,average='micro')
+    #     intervel = 100
+    #     if batch_index != 0 and batch_index % intervel == 0:
+    #         print("[ %d/%d ] loss = %f" % (batch_index / intervel, len(dataset) / (intervel * BATCH_SIZE), score / BATCH_SIZE))    
+    #         score = 0
+    record = np.empty(0)
+    data_loader = batch_data(testX)
+    for batch_index, (inputs) in enumerate(data_loader, 0):
+        inputs = inputs[0]
+        inputs = torch.from_numpy(inputs).long()
+        inputs = inputs.to(device)
         
         ypred = model(inputs)
         ypred = ypred.cpu().detach().numpy()
 
         ypred = ypred.argmax(axis = 1)
 
-        labels = labels.numpy()
+        record = np.hstack([record,ypred])
 
-        score += f1_score(labels,ypred,average='macro')
+        # labels = labels.numpy()
+
+        # score += f1_score(labels,ypred,average='micro')
         intervel = 100
         if batch_index != 0 and batch_index % intervel == 0:
-            print("[ %d/%d ] loss = %f" % (batch_index / intervel, len(dataset) / (intervel * BATCH_SIZE), score / BATCH_SIZE))    
-            score = 0
+            print(batch_index/intervel)
+            # print("[ %d/%d ] loss = %f" % (batch_index / intervel, len(dataset) / (intervel * BATCH_SIZE), score / BATCH_SIZE))    
+            # score = 0    
+
+
+    print("总f1_score = %.5f"%(f1_score(testy,record,average='micro')))
 def main():
     print("开始训练")
     start_time = time.time()
 
-    train_CNN()
+    # train_CNN()
 
     end_time = time.time()
     print("训练完成,用时 %.5f mins"%((end_time - start_time)/60))
@@ -187,3 +225,5 @@ def main():
     test_CNN()
 if __name__ == "__main__":
     main()
+    # for x in batch_data(testX):
+    #     print(x.shape)
