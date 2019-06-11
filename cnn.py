@@ -7,10 +7,12 @@ import torch.utils.data as Data
 from sklearn.externals import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.metrics import f1_score
 
 from labelencode import KaggleLabelEncode
 from gensim.models import word2vec
 from word2vec_lac import getCnnTrainData
+import time
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 if torch.cuda.is_available():
     print("gpu")
@@ -19,37 +21,12 @@ else:
 # device = torch.device("cpu")
 def getEmbed_lookup():
     model = word2vec.Word2Vec.load("model/dump/word2vec_32d.model")
-    # inputs = transform_to_matrix2(model, file, padding_size=12)
     return model.wv
 def stopwordslist(filepath):  
     stopwords = [line.strip() for line in open(filepath, 'r', encoding='utf-8').readlines()]  
     return stopwords
-def load_clf(path):
-    clf = joblib.load(path)
-    return clf
 def kaggle_preprocessing():
-    # file = open("model/train.csv")
-    # X = file.readlines()
-    # X = np.array(X)
-    X = np.load("model/dump/Xcnn.npy")
-    # labelfile = open('model/ingredients/train.solution')
-    # file.close()
-    # labelfile.close()
-    # print("加载数据完成")
-
-    # 序列化
-    # tfidf_vec = TfidfVectorizer()
-    # X = tfidf_vec.fit_transform(file)
-    # # joblib.dump(tfidf_vec, "model/dump/tfidf_vec.vec")
-    # # joblib.dump(X, "model/dump/X.data")
-    # # X = joblib.load("model/dump/X.data")
-    # sentence = labelfile.read()
-    # labellist = sentence.splitlines()
-    # # 将 solutions 中标签外的 {} 去除
-    # labellist = [x.strip("{}") for x in labellist]
-    # le = joblib.load("model/dump/le.le")
-    # y = le.transform(labellist)
-    # X = getCnnTrainData()
+    X = np.load("model/dump/Xcnn32.npy")
     y = joblib.load("model/dump/y.data")
     y = np.array(y)
     y = y.astype(np.int32)
@@ -59,7 +36,6 @@ class SentimentCNN(nn.Module):
     """
     The embedding layer + CNN model that will be used to perform sentiment analysis.
     """
-
     def __init__(self, embed_model, vocab_size, output_size, embedding_dim,
                  num_filters=100, kernel_sizes=[3, 4, 5], freeze_embeddings=True, drop_prob=0.5):
         """
@@ -80,20 +56,16 @@ class SentimentCNN(nn.Module):
             self.embedding.requires_grad = False
         
         # 2. convolutional layers
-        # self.convs_1d = nn.ModuleList([
-        #     nn.Conv2d(1, num_filters, (k, embedding_dim), padding=k-2) 
-        #     for k in kernel_sizes])
+        self.conv2d = nn.ModuleList([
+            nn.Conv2d(1, num_filters, (k, embedding_dim), padding=(k-2,0)) 
+            for k in kernel_sizes])
         
-        self.conv2d = nn.Conv2d(1,num_filters,(2,embedding_dim))
         # 3. final, fully-connected layer for classification
-        self.fc = nn.Linear(num_filters, output_size) 
+        self.fc = nn.Linear(len(kernel_sizes) * num_filters, output_size) 
         
         # 4. dropout and sigmoid layers
         self.dropout = nn.Dropout(drop_prob)
-        # self.sig = nn.Sigmoid()
-        self.softmax = nn.Softmax()
-        
-    
+        # self.softmax = nn.Softmax()
     def conv_and_pool(self, x, conv):
         """
         Convolutional + max pooling layer
@@ -122,11 +94,11 @@ class SentimentCNN(nn.Module):
         embeds = embeds.unsqueeze(1)
         
         # get output of each conv-pool layer
-        conv_results = [self.conv_and_pool(embeds, conv) for conv in self.convs_1d]
+        conv_results = [self.conv_and_pool(embeds, conv) for conv in self.conv2d]
         
         # concatenate results and add dropout
         x = torch.cat(conv_results, 1)
-        x = self.dropout(conv_results)
+        x = self.dropout(x)
         
         # final logit
         logit = self.fc(x) 
@@ -143,18 +115,19 @@ embedding_dim = embed_lookup.vector_size
 num_filters = 100
 kernel_sizes = [3]
 
-# net = Net(embed_lookup,vocab_size,output_size,embedding_dim,num_filters,kernel_sizes)
-net = SentimentCNN(embed_lookup,vocab_size,output_size,embedding_dim)
-
-net = net.to(device)
-# print(net)
-criterion = nn.CrossEntropyLoss()
-
-optimizer = optim.SGD(net.parameters(), lr=1e-2,momentum=0.9)
 BATCH_SIZE=100
 X, y = kaggle_preprocessing()
 trainX,testX,trainy,testy = train_test_split(X,y,test_size=0.2,random_state=42)
 def train_CNN():
+    net = SentimentCNN(embed_lookup,vocab_size,output_size,embedding_dim,kernel_sizes=kernel_sizes)
+
+    net = net.to(device)
+    # print(net)
+    criterion = nn.CrossEntropyLoss()
+
+    # optimizer = optim.SGD(net.parameters(), lr=1e-2,momentum=0.9)
+    optimizer = optim.Adam(net.parameters())
+
     net.train()
  
     running_loss = 0.0  
@@ -169,26 +142,48 @@ def train_CNN():
         outputs = net(inputs)
 
         loss = criterion(outputs,labels)
-        running_loss = loss.item()
+        running_loss += loss.item()
 
         loss.backward()
         optimizer.step()
 
         intervel = 100
-        if batch_index % 100 == 0:
-            print("[ %d/%d ] loss = %f" % (batch_index, len(dataset) / BATCH_SIZE, running_loss))
-    
+        if batch_index != 0 and batch_index % 100 == 0:
+            print("[ %d/%d ] loss = %f" % (batch_index / intervel, len(dataset) / (intervel * BATCH_SIZE), running_loss/BATCH_SIZE))    
+            running_loss = 0.0
+    torch.save(net,"model/dump/net_3_adam.model")
 
 def test_CNN():
-    dataset = Data.TensorDataset(torch.from_numpy(trainX).long(),torch.from_numpy(trainy).long())
-    data_loader = Data.DataLoader(dataset, shuffle=True, batch_size=BATCH_SIZE)
+    model = torch.load("model/dump/net_3_adam.model")
+    model.eval()
 
-    
-    pass
+    dataset = Data.TensorDataset(torch.from_numpy(testX).long(),torch.from_numpy(testy))
+    data_loader = Data.DataLoader(dataset, shuffle=True, batch_size=BATCH_SIZE)
+    score = 0.0
+    for batch_index, (inputs, labels) in enumerate(data_loader, 0):
+        inputs, labels = inputs.to(device), labels
+        
+        ypred = model(inputs)
+        ypred = ypred.cpu().detach().numpy()
+
+        ypred = ypred.argmax(axis = 1)
+
+        labels = labels.numpy()
+
+        score += f1_score(labels,ypred,average='macro')
+        intervel = 100
+        if batch_index != 0 and batch_index % intervel == 0:
+            print("[ %d/%d ] loss = %f" % (batch_index / intervel, len(dataset) / (intervel * BATCH_SIZE), score / BATCH_SIZE))    
+            score = 0
 def main():
     print("开始训练")
-    train_CNN()
-    print("训练完成")
+    start_time = time.time()
 
+    train_CNN()
+
+    end_time = time.time()
+    print("训练完成,用时 %.5f mins"%((end_time - start_time)/60))
+
+    test_CNN()
 if __name__ == "__main__":
     main()
