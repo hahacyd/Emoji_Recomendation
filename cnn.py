@@ -122,94 +122,26 @@ class SentimentCNN(nn.Module):
         embeds = embeds.unsqueeze(1)
         
         # get output of each conv-pool layer
-        # conv_results = [self.conv_and_pool(embeds, conv) for conv in self.convs_1d]
-        x = self.conv2d(embeds)
-        x = F.relu(x)
-        x = x.squeeze(3)
-        
-        # 1D pool over conv_seq_length
-        # squeeze to get size: (batch_size, num_filters)
-        x_max = F.max_pool1d(x, x.size(2))
-        x_max = x_max.squeeze(2)
-
-        conv_results = x_max
+        conv_results = [self.conv_and_pool(embeds, conv) for conv in self.convs_1d]
         
         # concatenate results and add dropout
-        # x = torch.cat(conv_results, 1)
+        x = torch.cat(conv_results, 1)
         x = self.dropout(conv_results)
         
         # final logit
         logit = self.fc(x) 
         
         # sigmoid-activated --> a class score
-        return self.softmax(logit)
-class Net(nn.Module):
-    def __init__(self, embed_model, vocab_size, output_size, embedding_dim,
-                num_filters=100,kernel_sizes=[3,4,5],freeze_embeddings = True,drop_prob=0.5):
-        super(Net, self).__init__()
-        # set class vars
-        self.num_filters = num_filters
-        self.embedding_dim = embedding_dim
+        # return self.softmax(logit)
+        return logit
 
-        # 1. embedding layer
-        self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        # set weights to pre-trained
-        self.embedding.weight = nn.Parameter(torch.from_numpy(embed_model.vectors))  #all vectors
-        
-        if freeze_embeddings:
-            self.embedding.requires_grad = False
-
-        # 2 convolutional layers
-        self.convs_1d = nn.ModuleList([
-            nn.Conv2d(1, num_filters, (k, embedding_dim), padding=k - 2)
-            for k in kernel_sizes
-        ])
-
-        # 3 final ,fully-connected layer for classification
-        self.fc = nn.Linear(len(kernel_sizes) * num_filters, output_size)
-        
-        # 4. dropout and sigmoid layers
-        self.dropout = nn.Dropout(drop_prob)
-        self.softmax = nn.Softmax()
-        # self.conv1 = nn.Conv2d(1, 20, 5, 1)
-        # self.conv2 = nn.Conv2d(20, 50, 5, 1)
-        # self.fc1 = nn.Linear(4*4*50, 500)
-        # self.fc2 = nn.Linear(500, 10)
-        # self.pool = nn.MaxPool2d(2,2)
-    def conv_and_pool(self, x, conv):
-        x = F.relu(conv(x)).squeeze(3)
-        x_max = F.max_pool1d(x, x.size(2)).squeeze(2)
-        return x_max
-    def forward(self, x):
-        # embedded vectors
-        embeds = self.embedding(x)# (batch_size, seq_length, embedding_dim)
-        # embeds.unsqueeze(1) creates a channel dimension that conv layers expect
-        embeds = embeds.unsqueeze(1)
-
-        # get output of each conv-pool layer
-        conv_results = [self.conv_add_pool(embeds,conv) for conv in self.convs_1d]
-
-        # concatenate results and add dropout
-        x = torch.cat(conv_results, 1)
-        x = self.dropout(x)
-
-        # final logit
-        logit = self.fc(x)
-
-        return self.softmax(logit)
-
-        # x = self.pool(F.relu(self.conv1(x)))
-        # x = x.view(-1, 4*4*50)
-        # x = F.relu(self.fc1(x))
-        # x = F.log_softmax(x, dim=1)
-        # return x
 embed_lookup = getEmbed_lookup()
 
 vocab_size = len(embed_lookup.vocab)
 output_size = 72
 embedding_dim = embed_lookup.vector_size
 num_filters = 100
-kernel_sizes = [3,4,5]
+kernel_sizes = [3]
 
 # net = Net(embed_lookup,vocab_size,output_size,embedding_dim,num_filters,kernel_sizes)
 net = SentimentCNN(embed_lookup,vocab_size,output_size,embedding_dim)
@@ -241,22 +173,22 @@ def train_CNN():
 
         loss.backward()
         optimizer.step()
+
+        intervel = 100
         if batch_index % 100 == 0:
             print("[ %d/%d ] loss = %f" % (batch_index, len(dataset) / BATCH_SIZE, running_loss))
     
 
 def test_CNN():
+    dataset = Data.TensorDataset(torch.from_numpy(trainX).long(),torch.from_numpy(trainy).long())
+    data_loader = Data.DataLoader(dataset, shuffle=True, batch_size=BATCH_SIZE)
+
+    
     pass
 def main():
     print("开始训练")
     train_CNN()
     print("训练完成")
-    # while True:
-    #     x = input()
-    #     data = tfidf_vec.transform([x])
-    #     y = clf.predict(data.toarray())
-    #     # text_clf.predict([x])
-    #     print(le.inverse_transform(y))
 
 if __name__ == "__main__":
     main()

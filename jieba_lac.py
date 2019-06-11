@@ -18,6 +18,7 @@ def cutTrainData():
     print("完成")
 
     seg_list = jieba.cut(sentence)
+    
     print("分词完成，正在写入文件 %s" %(output_filename))
     storefile = open(output_filename,mode='w')
     storetext = ''

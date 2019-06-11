@@ -24,3 +24,9 @@ clf = LinearSVC(verbose=1)
 
 [Parallel(n_jobs=1)]: Done   5 out of   5 | elapsed: 35.3min finished
 [LibLinear][LibLinear][LibLinear][LibLinear][LibLinear][0.14245255 0.13921389 0.13634547 0.13487663 0.13853757]
+
+神经网络:
+kernel:3   32维
+最后一次 loss = 3.522909
+0.16127925258856127
+
