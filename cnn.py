@@ -27,14 +27,16 @@ def batch_data(X,batch_size = 100):
     for i in range(for_times):
         yield X[i * batch_size:(i + 1) * batch_size]
     yield X[for_times * batch_size :]
-def getEmbed_lookup():
-    model = word2vec.Word2Vec.load("model/dump/word2vec_32d.model")
+def getEmbed_lookup(size):
+    # model = word2vec.Word2Vec.load("model/dump/word2vec_32d.model")
+    model = word2vec.Word2Vec.load("model/dump/word2vec_" + str(size) + "d.model")
+    print("词表加载成功，维度 %d * %d"%(len(model.wv.vocab) ,model.wv.vector_size))
     return model.wv
 def stopwordslist(filepath):  
     stopwords = [line.strip() for line in open(filepath, 'r', encoding='utf-8').readlines()]  
     return stopwords
-def kaggle_preprocessing():
-    X = np.load("model/dump/Xcnn32.npy")
+def kaggle_preprocessing(size):
+    X = np.load("model/dump/Xcnn"+str(size) + ".npy")
     y = joblib.load("model/dump/y.data")
     y = np.array(y)
     y = y.astype(np.int32)
@@ -108,6 +110,8 @@ class SentimentCNN(nn.Module):
         x = torch.cat(conv_results, 1)
         x = self.dropout(x)
         
+        # 这里是一个测试 100 * 100 * 2
+        # x = torch.reshape(x,(x.size(0),x.size(1) * x.size(2)))
         # final logit
         logit = self.fc(x) 
         
@@ -115,7 +119,8 @@ class SentimentCNN(nn.Module):
         # return self.softmax(logit)
         return logit
 
-embed_lookup = getEmbed_lookup()
+vector_size = 64
+embed_lookup = getEmbed_lookup(size=vector_size)
 
 vocab_size = len(embed_lookup.vocab)
 output_size = 72
@@ -123,76 +128,58 @@ embedding_dim = embed_lookup.vector_size
 num_filters = 100
 kernel_sizes = [3,4,5]
 
-BATCH_SIZE=100
-X, y = kaggle_preprocessing()
-trainX,testX,trainy,testy = train_test_split(X,y,test_size=0.2,random_state=42)
-def train_CNN():
-    net = SentimentCNN(embed_lookup,vocab_size,output_size,embedding_dim,kernel_sizes=kernel_sizes)
+BATCH_SIZE=200
+X, y = kaggle_preprocessing(size=vector_size)
+trainX, testX, trainy, testy = train_test_split(X, y, test_size=0.2, random_state=42)
+net = SentimentCNN(embed_lookup,vocab_size,output_size,embedding_dim,kernel_sizes=kernel_sizes)
 
-    net = net.to(device)
+net = net.to(device)
+def train_CNN():
+
     # print(net)
     criterion = nn.CrossEntropyLoss()
 
-    # optimizer = optim.SGD(net.parameters(), lr=1e-2,momentum=0.9)
     optimizer = optim.Adam(net.parameters())
 
     net.train()
  
     running_loss = 0.0  
 
-    dataset = Data.TensorDataset(torch.from_numpy(trainX).long(),torch.from_numpy(trainy).long())
-    data_loader = Data.DataLoader(dataset, shuffle=True, batch_size=BATCH_SIZE)
-    
-    for batch_index, (inputs, labels) in enumerate(data_loader, 0):
-        inputs, labels = inputs.to(device), labels.to(device)
-        
-        optimizer.zero_grad()
-        outputs = net(inputs)
+    for epoch in range(2):
+        dataset = Data.TensorDataset(torch.from_numpy(trainX).long(),torch.from_numpy(trainy).long())
+        data_loader = Data.DataLoader(dataset, shuffle=True, batch_size=BATCH_SIZE)
 
-        loss = criterion(outputs,labels)
-        running_loss += loss.item()
+        for batch_index, (inputs, labels) in enumerate(data_loader, 0):
+            inputs, labels = inputs.to(device), labels.to(device)
 
-        loss.backward()
-        optimizer.step()
+            optimizer.zero_grad()
+            outputs = net(inputs)
 
-        intervel = 100
-        if batch_index != 0 and batch_index % 100 == 0:
-            print("[ %d/%d ] loss = %f" % (batch_index / intervel, len(dataset) / (intervel * BATCH_SIZE), running_loss/BATCH_SIZE))    
-            running_loss = 0.0
-    torch.save(net,"model/dump/net_345_adam.model")
+            loss = criterion(outputs,labels)
+            running_loss += loss.item()
+
+            loss.backward()
+            optimizer.step()
+
+            intervel = 100
+            if batch_index != 0 and batch_index % 100 == 0:
+                print("epoch = %d [ %d/%d ] loss = %f" % (epoch, batch_index / intervel, len(dataset) / (intervel * BATCH_SIZE), running_loss/BATCH_SIZE))    
+                running_loss = 0.0
+        test_CNN()
+    torch.save(net,"model/dump/net_345_64_adam.model")
 
 def test_CNN():
-    model = torch.load("model/dump/net_345_adam.model",map_location=device)
+    model = net
+    # model = torch.load("model/dump/net_345_adam.model",map_location=device)
     model.eval()
 
-    # dataset = Data.TensorDataset(torch.from_numpy(testX).long(),torch.from_numpy(testy))
-    # data_loader = Data.DataLoader(dataset, shuffle=True, batch_size=BATCH_SIZE)
-    # score = 0.0
-    # # record = np.empty(0)
-    # for batch_index, (inputs, labels) in enumerate(data_loader, 0):
-    #     print(np.sum(labels.numpy() == testy[batch_index * BATCH_SIZE:(batch_index + 1)*BATCH_SIZE]))
-
-    #     inputs = inputs.to(device)
-        
-    #     ypred = model(inputs)
-    #     ypred = ypred.cpu().detach().numpy()
-
-    #     ypred = ypred.argmax(axis = 1)
-
-    #     # record = np.hstack([record,ypred])
-
-    #     labels = labels.numpy()
-
-    #     score += f1_score(labels,ypred,average='micro')
-    #     intervel = 100
-    #     if batch_index != 0 and batch_index % intervel == 0:
-    #         print("[ %d/%d ] loss = %f" % (batch_index / intervel, len(dataset) / (intervel * BATCH_SIZE), score / BATCH_SIZE))    
-    #         score = 0
+    dataset = Data.TensorDataset(torch.from_numpy(testX).long(),torch.from_numpy(testy))
+    data_loader = Data.DataLoader(dataset, batch_size=BATCH_SIZE)
+    score = 0.0
     record = np.empty(0)
-    data_loader = batch_data(testX)
-    for batch_index, (inputs) in enumerate(data_loader, 0):
-        inputs = inputs[0]
-        inputs = torch.from_numpy(inputs).long()
+    for batch_index, (inputs, labels) in enumerate(data_loader, 0):
+        # print(np.sum(labels.numpy() == testy[batch_index * BATCH_SIZE:(batch_index + 1)*BATCH_SIZE]))
+
         inputs = inputs.to(device)
         
         ypred = model(inputs)
@@ -202,27 +189,24 @@ def test_CNN():
 
         record = np.hstack([record,ypred])
 
-        # labels = labels.numpy()
+        labels = labels.numpy()
 
-        # score += f1_score(labels,ypred,average='micro')
+        score += f1_score(labels,ypred,average='micro')
         intervel = 100
         if batch_index != 0 and batch_index % intervel == 0:
-            print(batch_index/intervel)
-            # print("[ %d/%d ] loss = %f" % (batch_index / intervel, len(dataset) / (intervel * BATCH_SIZE), score / BATCH_SIZE))    
-            # score = 0    
-
-
+            print("[ %d/%d ] score = %f" % (batch_index / intervel, len(dataset) / (intervel * BATCH_SIZE), score / BATCH_SIZE))    
+            score = 0
     print("总f1_score = %.5f"%(f1_score(testy,record,average='micro')))
 def main():
     print("开始训练")
     start_time = time.time()
 
-    # train_CNN()
+    train_CNN()
 
     end_time = time.time()
     print("训练完成,用时 %.5f mins"%((end_time - start_time)/60))
 
-    test_CNN()
+    # test_CNN()
 if __name__ == "__main__":
     main()
     # for x in batch_data(testX):

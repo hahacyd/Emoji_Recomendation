@@ -3,6 +3,7 @@ from labelencode import KaggleLabelEncode
 from gensim.models import word2vec
 from word2vec_lac import transform_to_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_selection import SelectKBest,chi2
 import numpy as np
 def dump_label():
     labelfile = open('model/ingredients/train.solution')
@@ -32,7 +33,7 @@ def dump_Cnn_data(file, size):
 
     model = word2vec.Word2Vec.load("model/dump/word2vec_" + str(size) + "d.model")
     inputs = transform_to_matrix(model, file, padding_size=24)
-    # joblib.dump(inputs, "model/dump/Xcnn.csv")
+    # np.save("model/dump/Xcnn" + str(size) + ".npy",inputs)
     np.save("model/dump/Testcnn" + str(size) + ".npy",inputs)
     file.close()
 def dump_tfidf_data(inputpath,outputpath):
@@ -59,8 +60,10 @@ def dump_tfidf_vec(outpath):
     corpus.close()
 if __name__ == "__main__":
     # dump_word2vec_model(size=32)
-    # dump_Cnn_data(file = "model/test.csv",size=32)
+    dump_Cnn_data(file = "model/train.csv",size=256)
+    # dump_Cnn_data(file = "model/test.csv",size=64)
+
 
     # dump_tfidf_vec("model/dump/tfidf_vec.vec")
     # dump_tfidf_data("model/train.csv","model/dump/X.data")
-    dump_tfidf_data("model/test.csv","model/dump/Test.data")
+    # dump_tfidf_data("model/test.csv","model/dump/Test.data")

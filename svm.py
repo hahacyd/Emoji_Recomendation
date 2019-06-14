@@ -7,7 +7,6 @@ from sklearn.svm import LinearSVC
 from labelencode import KaggleLabelEncode
 import time
 
-
 def train():
     file = open("model/train.csv")
     print("加载数据完成")
