@@ -1,10 +1,10 @@
 from gensim.models import word2vec
+from gensim.models import KeyedVectors
 import numpy as np
 from sklearn.externals import joblib
-def transform_to_matrix(model, x, padding_size):
+def transform_to_matrix(kv, x, padding_size):
     lines = x.readlines()
     line_num = len(lines)
-    # vec_size = model.wv.vector_size
     res = np.zeros((line_num, padding_size))
     sentence = []
     print("开始转换...",end='')
@@ -17,7 +17,7 @@ def transform_to_matrix(model, x, padding_size):
             if j >= padding_size:
                 break 
             try:
-                res[i, j] = model.wv.vocab[sentence[j]].index
+                res[i, j] = kv.vocab[sentence[j]].index
             except:
                 v = 1
     return res    
@@ -29,10 +29,7 @@ def getCnnTrainData():
     np.save("model/dump/Xcnn.npy",inputs)
     file.close()
     return inputs
-def getEmbed_lookup():
-    model = word2vec.Word2Vec.load("model/dump/word2vec_32d.model")
-    # inputs = transform_to_matrix2(model, file, padding_size=12)
-    return model.wv
+
 def main():
 
     getCnnTrainData()

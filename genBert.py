@@ -15,23 +15,41 @@ def genTrain():
     y = np.array(y)
     y = y.astype(np.int32)
 
-    trainX, devX, trainy, devy = train_test_split(X, y, test_size=0.2, random_state=42)
+    trainX, devX, trainy, devy = train_test_split(lines, y, test_size=0.2, random_state=42)
 
     # 写入训练集 
-    # trainfile = open("model/bert/train.tsv",model='x')
-    # for label, data in zip(trainy, trainX):
-    #     trainfile.write(str(label) + "\t" + data + "\n")
-    # trainfile.close()
+    trainfile = open("model/bert/train.tsv", mode='x')
+    writetext = ''
+    for label, data in zip(trainy, trainX):
+        writetext += str(label) + "\t" + data
+    trainfile.write(writetext) 
+    trainfile.close()
 
     # 写入验证集
-    devfile = open("model/bert/dev.tsv", model='x')
+    devfile = open("model/bert/dev.tsv", mode='x')
+
+    writetext = ''
     for label, data in zip(devy, devX):
-        devfile.write(str(label) + "\t" + data + "\n")    
+        writetext += str(label) + "\t" + data
+    devfile.write(writetext)    
     devfile.close()
 
+def genTest():
+    input_filename = "model/ingredients/test.data"
+    output_filename = "model/bert/test.tsv"
+    file = open(input_filename)
+    testfile = open(output_filename,mode='x')
+    sentence = ''
+    # sentence = file.read()
+    for line in file:
+        sentence += line.split(maxsplit=1)[1]
+    file.write(sentence)
+    file.close()
+    print("完成")
     
 def main():
-    genTrain()
+    # genTrain()
+    genTest()
 
 if __name__ == "__main__":
     main()

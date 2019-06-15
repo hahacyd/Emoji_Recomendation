@@ -10,7 +10,7 @@ from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.metrics import f1_score
 
 from labelencode import KaggleLabelEncode
-from gensim.models import word2vec
+from gensim.models import word2vec,KeyedVectors
 from word2vec_lac import getCnnTrainData
 import time
 import math
@@ -28,10 +28,9 @@ def batch_data(X,batch_size = 100):
         yield X[i * batch_size:(i + 1) * batch_size]
     yield X[for_times * batch_size :]
 def getEmbed_lookup(size):
-    # model = word2vec.Word2Vec.load("model/dump/word2vec_32d.model")
-    model = word2vec.Word2Vec.load("model/dump/word2vec_" + str(size) + "d.model")
-    print("词表加载成功，维度 %d * %d"%(len(model.wv.vocab) ,model.wv.vector_size))
-    return model.wv
+    kv = KeyedVectors.load("model/dump/word2vec_" + str(size) + "d.kv",mmap='r')
+    print("词表加载成功，维度 %d * %d"%(len(kv.vocab) ,kv.vector_size))
+    return kv
 def stopwordslist(filepath):  
     stopwords = [line.strip() for line in open(filepath, 'r', encoding='utf-8').readlines()]  
     return stopwords
@@ -119,16 +118,16 @@ class SentimentCNN(nn.Module):
         # return self.softmax(logit)
         return logit
 
-vector_size = 64
+vector_size = 256
 embed_lookup = getEmbed_lookup(size=vector_size)
 
 vocab_size = len(embed_lookup.vocab)
 output_size = 72
 embedding_dim = embed_lookup.vector_size
 num_filters = 100
-kernel_sizes = [3,4,5]
+kernel_sizes = [2,3,4,5]
 
-BATCH_SIZE=200
+BATCH_SIZE=100
 X, y = kaggle_preprocessing(size=vector_size)
 trainX, testX, trainy, testy = train_test_split(X, y, test_size=0.2, random_state=42)
 net = SentimentCNN(embed_lookup,vocab_size,output_size,embedding_dim,kernel_sizes=kernel_sizes)
@@ -145,7 +144,7 @@ def train_CNN():
  
     running_loss = 0.0  
 
-    for epoch in range(2):
+    for epoch in range(9):
         dataset = Data.TensorDataset(torch.from_numpy(trainX).long(),torch.from_numpy(trainy).long())
         data_loader = Data.DataLoader(dataset, shuffle=True, batch_size=BATCH_SIZE)
 
