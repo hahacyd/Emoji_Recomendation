@@ -8,50 +8,50 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_selection import SelectKBest,chi2
 import numpy as np
 def dump_label():
-    labelfile = open('model/ingredients/train.solution')
+    labelfile = open('ingredients/train.solution')
     sentence = labelfile.read()
     labellist = sentence.splitlines()
     # 将 solutions 中标签外的 {} 去除
     labellist = [x.strip("{}") for x in labellist]
-    le = joblib.load("model/dump/le.le")
+    le = joblib.load("dump/le.le")
     y = le.transform(labellist)
-    joblib.dump(y, "model/dump/y.data")
+    joblib.dump(y, "dump/y.data")
 def dump_word2vec_model(size):
-    # train_file = open("model/train.csv")
-    # test_file = open("model/test.csv")
-    corpus = open("model/corpus.csv")
+    # train_file = open("train.csv")
+    # test_file = open("test.csv")
+    corpus = open("corpus.csv")
     sentence = word2vec.LineSentence(corpus)
     print("size = %d 预处理完毕 开始训练..."%(size))
 
     model = word2vec.Word2Vec(sentences=sentence,size = size,window=5)
 
     print("训练结束")
-    # model.save("model/dump/word2vec_" + str(size) + "d.model")
-    model.wv.save("model/dump/word2vec_" + str(size) + "d.kv")
+    # model.save("dump/word2vec_" + str(size) + "d.model")
+    model.wv.save("dump/word2vec_" + str(size) + "d.kv")
 
     corpus.close()
 def dump_Cnn_data(size):
     print("size = %d"%(size))
-    trainfile = open("model/train.csv")
-    testfile = open("model/test.csv")
+    trainfile = open("train.csv")
+    testfile = open("test.csv")
 
-    kv = KeyedVectors.load("model/dump/word2vec_" + str(size) + "d.kv", mmap='r')
+    kv = KeyedVectors.load("dump/word2vec_" + str(size) + "d.kv", mmap='r')
     
     train = transform_to_matrix(kv, trainfile, padding_size=24)
     test = transform_to_matrix(kv, testfile, padding_size=24)
 
-    np.save("model/dump/Xcnn" + str(size) + ".npy",train)
-    np.save("model/dump/Testcnn" + str(size) + ".npy", test)
+    np.save("dump/Xcnn" + str(size) + ".npy",train)
+    np.save("dump/Testcnn" + str(size) + ".npy", test)
     
     trainfile.close()
     testfile.close()
 def dump_tfidf_data():
-    tfidf_vec = joblib.load("model/dump/tfidf_vec.vec")
+    tfidf_vec = joblib.load("dump/tfidf_vec.vec")
     
-    trainfile = open("model/train.csv")
-    testfile = open("model/test.csv")
+    trainfile = open("train.csv")
+    testfile = open("test.csv")
 
-    y = joblib.load("model/dump/y.data")
+    y = joblib.load("dump/y.data")
 
     train = tfidf_vec.transform(trainfile)
     test = tfidf_vec.transform(testfile)
@@ -62,22 +62,22 @@ def dump_tfidf_data():
     # model.fit(train, y)
     
     # print("完成")
-    # joblib.dump(model,"model/dump/feature_selected_20000.chi")
-    model = joblib.load("model/dump/feature_selected_20000.chi")
+    # joblib.dump(model,"dump/feature_selected_20000.chi")
+    model = joblib.load("dump/feature_selected_20000.chi")
 
     trainfile.close()
     testfile.close()
 
     train = model.transform(train)
     test = model.transform(test)
-    np.save("model/dump/X.npy", train)
-    np.save("model/dump/Test.npy", test)
+    np.save("dump/X.npy", train)
+    np.save("dump/Test.npy", test)
 
 
 def dump_tfidf_vec(outpath):
-    # trainfile = open("model/train.csv")
-    # testfile = open("model/test.csv")
-    corpus = open("model/corpus.csv")
+    # trainfile = open("train.csv")
+    # testfile = open("test.csv")
+    corpus = open("corpus.csv")
     print("数据初始化完毕,训练中 ")
     tfidf_vec = TfidfVectorizer()
 
@@ -90,10 +90,10 @@ def dump_tfidf_vec(outpath):
     joblib.dump(tfidf_vec, outpath)
     corpus.close()
     
-    trainfile = open("model/train.csv")
-    testfile = open("model/test.csv")
+    trainfile = open("train.csv")
+    testfile = open("test.csv")
 
-    y = joblib.load("model/dump/y.data")
+    y = joblib.load("dump/y.data")
 
     train = tfidf_vec.transform(trainfile)
     test = tfidf_vec.transform(testfile)
@@ -104,20 +104,20 @@ def dump_tfidf_vec(outpath):
     # model.fit(train, y)
     
     # print("完成")
-    # joblib.dump(model,"model/dump/feature_selected_20000.chi")
-    model = joblib.load("model/dump/feature_selected_20000.chi")
+    # joblib.dump(model,"dump/feature_selected_20000.chi")
+    model = joblib.load("dump/feature_selected_20000.chi")
 
     trainfile.close()
     testfile.close()
 
-    np.save("model/dump/X.npy", model.transform(train))
-    np.save("model/dump/Test.npy", model.transform(test))
+    np.save("dump/X.npy", model.transform(train))
+    np.save("dump/Test.npy", model.transform(test))
     
 if __name__ == "__main__":
     # dump_word2vec_model(size=128)
     # dump_Cnn_data(size=128)
 
 
-    # dump_tfidf_vec("model/dump/tfidf_vec.vec")
+    # dump_tfidf_vec("dump/tfidf_vec.vec")
     dump_tfidf_data()
-    # dump_tfidf_data("model/test.csv","model/dump/Test.data")
+    # dump_tfidf_data("test.csv","dump/Test.data")

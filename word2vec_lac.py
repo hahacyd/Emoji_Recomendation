@@ -39,11 +39,11 @@ def transform_to_matrix(kv, x, padding_size):
                 print("模型中没有词语 %s, 将自动补0"%(sentence[j]))
     return res    
 def getCnnTrainData():
-    file = open("model/train.csv")
-    model = word2vec.Word2Vec.load("model/dump/word2vec_32d.model")
+    file = open("train.csv")
+    model = word2vec.Word2Vec.load("dump/word2vec_32d.model")
     inputs = transform_to_matrix(model, file, padding_size=12)
-    # joblib.dump(inputs, "model/dump/Xcnn.csv")
-    np.save("model/dump/Xcnn.npy",inputs)
+    # joblib.dump(inputs, "dump/Xcnn.csv")
+    np.save("dump/Xcnn.npy",inputs)
     file.close()
     return inputs
 

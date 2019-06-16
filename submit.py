@@ -10,18 +10,18 @@ def load_clf(path):
     clf = joblib.load(path)
     return clf
 def NaiveBayes_clf():
-    clf = joblib.load("model/dump/naive_bayes.model")
-    test = joblib.load("model/dump/Test.data")
+    clf = joblib.load("dump/naive_bayes.model")
+    test = joblib.load("dump/Test.data")
 
     return clf.predict(test)
 
 def svm_clf():
-    clf = load_clf("model/dump/svm_emotion.pkl")
+    clf = load_clf("dump/svm_emotion.pkl")
     print("训练模型加载完毕")
     
-    tfidf_vec = joblib.load("model/dump/tfidf_vec.vec")
+    tfidf_vec = joblib.load("dump/tfidf_vec.vec")
 
-    test_file = open("model/test.csv")
+    test_file = open("test.csv")
     testX = tfidf_vec.transform(test_file)
     print("测试数据加载完毕")
 
@@ -30,10 +30,10 @@ def svm_clf():
 
 def cnn_clf():
     BATCH_SIZE = 100
-    model = torch.load("model/dump/net_345_128_adam_1.model",map_location=device)
+    model = torch.load("dump/net_345_128_adam_1.model",map_location=device)
     model.eval()
 
-    testX = np.load("model/dump/Testcnn128.npy")
+    testX = np.load("dump/Testcnn128.npy")
     length = len(testX)
 
     dataset = Data.TensorDataset(torch.from_numpy(testX).long())
@@ -61,7 +61,7 @@ def main():
     ypred = cnn_clf()
     # ypred = NaiveBayes_clf()
     # 开始将结果 写入提交文件
-    submit_file = open("model/submit/submit.csv", mode='w')
+    submit_file = open("submit/submit.csv", mode='w')
     submit_file.writelines(["ID,Expected\n"])
     text = ''
     for index, value in enumerate(ypred,0):

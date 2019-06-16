@@ -10,17 +10,17 @@ def load_clf(path):
     return clf
 
 def main():
-    clf = load_clf("model/dump/svm_emotion.pkl")
+    clf = load_clf("dump/svm_emotion.pkl")
     print("模型加载完毕")
     
-    transformer = joblib.load("model/dump/transfer.trans")
-    X = joblib.load("model/dump/X.data")
+    transformer = joblib.load("dump/transfer.trans")
+    X = joblib.load("dump/X.data")
     
-    labelfile = open('model/train.solution')
+    labelfile = open('train.solution')
     sentence = labelfile.read()
     labellist = sentence.splitlines()
     # le = LabelEncoder()
-    le = joblib.load("model/dump/le.le")
+    le = joblib.load("dump/le.le")
     
     # y = le.fit_transform(labellist)
     y = le.transform(labellist)

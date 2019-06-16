@@ -28,15 +28,15 @@ def batch_data(X,batch_size = 100):
         yield X[i * batch_size:(i + 1) * batch_size]
     yield X[for_times * batch_size :]
 def getEmbed_lookup(size):
-    kv = KeyedVectors.load("model/dump/word2vec_" + str(size) + "d.kv",mmap='r')
+    kv = KeyedVectors.load("dump/word2vec_" + str(size) + "d.kv",mmap='r')
     print("词表加载成功，维度 %d * %d"%(len(kv.vocab) ,kv.vector_size))
     return kv
 def stopwordslist(filepath):  
     stopwords = [line.strip() for line in open(filepath, 'r', encoding='utf-8').readlines()]  
     return stopwords
 def kaggle_preprocessing(size):
-    X = np.load("model/dump/Xcnn"+str(size) + ".npy")
-    y = joblib.load("model/dump/y.data")
+    X = np.load("dump/Xcnn"+str(size) + ".npy")
+    y = joblib.load("dump/y.data")
     y = np.array(y)
     y = y.astype(np.int32)
     print("数据预处理完成")
@@ -172,12 +172,12 @@ def train_CNN():
         if temp_score > max_score:
             max_score = temp_score
         elif temp_score < max_score:
-            torch.save(net,"model/dump/net_345_128_adam_1.model")
-    torch.save(net,"model/dump/net_345_128_adam_2.model")
+            torch.save(net,"dump/net_345_128_adam_1.model")
+    torch.save(net,"dump/net_345_128_adam_2.model")
 
 def test_CNN():
     model = net
-    # model = torch.load("model/dump/net_345_adam.model",map_location=device)
+    # model = torch.load("dump/net_345_adam.model",map_location=device)
     model.eval()
 
     dataset = Data.TensorDataset(torch.from_numpy(testX).long(),torch.from_numpy(testy))

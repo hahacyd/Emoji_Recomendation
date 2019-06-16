@@ -8,13 +8,13 @@ from labelencode import KaggleLabelEncode
 import time
 
 def train():
-    file = open("model/train.csv")
+    file = open("train.csv")
     print("加载数据完成")
-    X = joblib.load("model/dump/X.data")
+    X = joblib.load("dump/X.data")
     
     print(X.shape)
 
-    y = joblib.load("model/dump/y.data")
+    y = joblib.load("dump/y.data")
     print("数据预处理完成")
     
     file.close()
@@ -27,13 +27,13 @@ def train():
     # clf = DecisionTreeClassifier()
      
     # clf.fit(X, y)
-    # joblib.dump(clf,"model/dump/svm_emotion.pkl")
+    # joblib.dump(clf,"dump/svm_emotion.pkl")
     scores=cross_val_score(clf, X, y, cv=5, verbose=1)
     
     time_end=time.time()
     
     print(scores)
-    # clf = load_clf("model/dump/svm_emotion.pkl")
+    # clf = load_clf("dump/svm_emotion.pkl")
     # print("训练完成")
     print("测试完成 , 用时 %.5f 秒" % (time_end - time_start))
 if __name__ == "__main__":

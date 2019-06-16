@@ -9,7 +9,7 @@ class KaggleLabelEncode(object):
     def __init__(self):
         self.index2value = {}
         self.value2index = {}
-        # self.loaddict('model/emoji.data')
+        # self.loaddict('emoji.data')
     def loaddict(self, path):
         file = open(path, mode='r')
         for line in file:
@@ -40,9 +40,9 @@ class KaggleLabelEncode(object):
 
 def main():
     le = KaggleLabelEncode()
-    le.loaddict("model/ingredients/emoji.data")
+    le.loaddict("ingredients/emoji.data")
     # print(le.transform(['祈祷','笑']))
     # print(le.inverse_transform([1,46]))
-    joblib.dump(le, 'model/dump/le.le')
+    joblib.dump(le, 'dump/le.le')
 if __name__ == "__main__":
     main()

@@ -4,17 +4,17 @@ import numpy as np
 from sklearn.model_selection import train_test_split,cross_val_score
 from sklearn.metrics import f1_score,make_scorer
 def fit():
-    X = joblib.load("model/dump/X.data")
-    y = joblib.load("model/dump/y.data")
+    X = joblib.load("dump/X.data")
+    y = joblib.load("dump/y.data")
 
     clf = MultinomialNB()
     print("开始训练")
     clf.fit(X, y)
-    joblib.dump(clf, "model/dump/naive_bayes.model")
+    joblib.dump(clf, "dump/naive_bayes.model")
     print("完成 模型保存完毕")
 def main():
-    X = joblib.load("model/dump/X.data")
-    y = joblib.load("model/dump/y.data")
+    X = joblib.load("dump/X.data")
+    y = joblib.load("dump/y.data")
 
     clf = MultinomialNB()
     

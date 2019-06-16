@@ -3,7 +3,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.externals import joblib
 
 def genTrain():
-    file = open("model/ingredients/train.data")
+    file = open("ingredients/train.data")
     lines = file.readlines()
 
     file.close()
@@ -11,14 +11,14 @@ def genTrain():
     # X
     lines = np.array(lines)
     # y
-    y = joblib.load("model/dump/y.data")
+    y = joblib.load("dump/y.data")
     y = np.array(y)
     y = y.astype(np.int32)
 
     trainX, devX, trainy, devy = train_test_split(lines, y, test_size=0.2, random_state=42)
 
     # 写入训练集 
-    trainfile = open("model/bert/train.tsv", mode='x')
+    trainfile = open("bert/train.tsv", mode='x')
     writetext = ''
     for label, data in zip(trainy, trainX):
         writetext += str(label) + "\t" + data
@@ -26,7 +26,7 @@ def genTrain():
     trainfile.close()
 
     # 写入验证集
-    devfile = open("model/bert/dev.tsv", mode='x')
+    devfile = open("bert/dev.tsv", mode='x')
 
     writetext = ''
     for label, data in zip(devy, devX):
@@ -35,8 +35,8 @@ def genTrain():
     devfile.close()
 
 def genTest():
-    input_filename = "model/ingredients/test.data"
-    output_filename = "model/bert/test.tsv"
+    input_filename = "ingredients/test.data"
+    output_filename = "bert/test.tsv"
     file = open(input_filename)
     testfile = open(output_filename,mode='x')
     sentence = ''

@@ -17,27 +17,27 @@ def fit(X, y):
     clf = SGDClassifier(loss='hinge', penalty='l2',alpha=1e-3, random_state=42,max_iter=5, tol=None)
     clf.fit(X, y)
     
-    # joblib.dump(clf, "model/dump/NaiveBayes_emotion.pkl")
-    joblib.dump(clf,"model/dump/svm_eomtion.pkl")
+    # joblib.dump(clf, "dump/NaiveBayes_emotion.pkl")
+    joblib.dump(clf,"dump/svm_eomtion.pkl")
     return clf
 def load_clf(path):
     clf = joblib.load(path)
     return clf
 def main():
-    file = open("model/train.csv")
+    file = open("train.csv")
     print("加载数据完成")
-    X = joblib.load("model/dump/X.data")
+    X = joblib.load("dump/X.data")
     
     print(X.shape)
 
-    y = joblib.load("model/dump/y.data")
+    y = joblib.load("dump/y.data")
     print("数据预处理完成")
     
     file.close()
 
     print("开始训练")
     # 产生训练集和验证集
-    transformer = joblib.load("model/dump/tfidf_vec.vec")
+    transformer = joblib.load("dump/tfidf_vec.vec")
     X = transformer.transform(X)
     trainX, testX, trainy, testy = train_test_split(X, y, shuffle=True, test_size=0.2, random_state=42)
     
@@ -49,7 +49,7 @@ def main():
     # clf = DecisionTreeClassifier()
      
     clf.fit(trainX,trainy)
-    # joblib.dump(clf,"model/dump/svm_emotion.pkl")
+    # joblib.dump(clf,"dump/svm_emotion.pkl")
     # scores=cross_val_score(clf, X, y, cv=5, verbose=1)
     record = clf.predict(testX)
 
@@ -58,7 +58,7 @@ def main():
     time_end=time.time()
     
     print("scores = %.5f"%(fina_score))
-    # clf = load_clf("model/dump/svm_emotion.pkl")
+    # clf = load_clf("dump/svm_emotion.pkl")
     # print("训练完成")
     print("测试完成 , 用时 %.5f 秒"%(time_end - time_start))
 
