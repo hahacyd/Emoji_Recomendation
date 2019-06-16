@@ -30,10 +30,10 @@ def svm_clf():
 
 def cnn_clf():
     BATCH_SIZE = 100
-    model = torch.load("model/dump/net_345_64_adam.model",map_location=device)
+    model = torch.load("model/dump/net_345_128_adam_1.model",map_location=device)
     model.eval()
 
-    testX = np.load("model/dump/Testcnn64.npy")
+    testX = np.load("model/dump/Testcnn128.npy")
     length = len(testX)
 
     dataset = Data.TensorDataset(torch.from_numpy(testX).long())

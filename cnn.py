@@ -118,14 +118,14 @@ class SentimentCNN(nn.Module):
         # return self.softmax(logit)
         return logit
 
-vector_size = 256
+vector_size = 128
 embed_lookup = getEmbed_lookup(size=vector_size)
 
 vocab_size = len(embed_lookup.vocab)
 output_size = 72
 embedding_dim = embed_lookup.vector_size
 num_filters = 100
-kernel_sizes = [2,3,4,5]
+kernel_sizes = [3,4,5]
 
 BATCH_SIZE=100
 X, y = kaggle_preprocessing(size=vector_size)
@@ -139,12 +139,15 @@ def train_CNN():
     criterion = nn.CrossEntropyLoss()
 
     optimizer = optim.Adam(net.parameters())
-
+    
     net.train()
+
  
     running_loss = 0.0  
 
+    max_score = -1
     for epoch in range(9):
+
         dataset = Data.TensorDataset(torch.from_numpy(trainX).long(),torch.from_numpy(trainy).long())
         data_loader = Data.DataLoader(dataset, shuffle=True, batch_size=BATCH_SIZE)
 
@@ -164,8 +167,13 @@ def train_CNN():
             if batch_index != 0 and batch_index % 100 == 0:
                 print("epoch = %d [ %d/%d ] loss = %f" % (epoch, batch_index / intervel, len(dataset) / (intervel * BATCH_SIZE), running_loss/BATCH_SIZE))    
                 running_loss = 0.0
-        test_CNN()
-    torch.save(net,"model/dump/net_345_64_adam.model")
+        
+        temp_score = test_CNN()
+        if temp_score > max_score:
+            max_score = temp_score
+        elif temp_score < max_score:
+            torch.save(net,"model/dump/net_345_128_adam_1.model")
+    torch.save(net,"model/dump/net_345_128_adam_2.model")
 
 def test_CNN():
     model = net
@@ -195,7 +203,9 @@ def test_CNN():
         if batch_index != 0 and batch_index % intervel == 0:
             print("[ %d/%d ] score = %f" % (batch_index / intervel, len(dataset) / (intervel * BATCH_SIZE), score / BATCH_SIZE))    
             score = 0
-    print("总f1_score = %.5f"%(f1_score(testy,record,average='micro')))
+    fina_score = f1_score(testy,record,average='micro')
+    print("总f1_score = %.5f"%(fina_score))
+    return fina_score
 def main():
     print("开始训练")
     start_time = time.time()

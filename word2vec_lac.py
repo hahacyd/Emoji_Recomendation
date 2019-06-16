@@ -31,7 +31,6 @@ def getCnnTrainData():
     return inputs
 
 def main():
-
     getCnnTrainData()
 if __name__ == "__main__":
     main()

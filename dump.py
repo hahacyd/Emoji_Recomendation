@@ -23,51 +23,101 @@ def dump_word2vec_model(size):
     sentence = word2vec.LineSentence(corpus)
     print("size = %d 预处理完毕 开始训练..."%(size))
 
-    model = word2vec.Word2Vec(sentences=sentence,size = size,window=8)
+    model = word2vec.Word2Vec(sentences=sentence,size = size,window=5)
 
     print("训练结束")
     # model.save("model/dump/word2vec_" + str(size) + "d.model")
     model.wv.save("model/dump/word2vec_" + str(size) + "d.kv")
 
     corpus.close()
-def dump_Cnn_data(file, size):
-    print("%s : size = %d"%(file,size))
-    file = open(file)
+def dump_Cnn_data(size):
+    print("size = %d"%(size))
+    trainfile = open("model/train.csv")
+    testfile = open("model/test.csv")
 
-    # model = word2vec.Word2Vec.load("model/dump/word2vec_" + str(size) + "d.model")
-    kv = KeyedVectors.load("model/dump/word2vec_" + str(size) + "d.kv",mmap='r')
-    inputs = transform_to_matrix(kv, file, padding_size=24)
-    # np.save("model/dump/Xcnn" + str(size) + ".npy",inputs)
-    np.save("model/dump/Testcnn" + str(size) + ".npy",inputs)
-    file.close()
-def dump_tfidf_data(inputpath,outputpath):
-    file = open(inputpath)
+    kv = KeyedVectors.load("model/dump/word2vec_" + str(size) + "d.kv", mmap='r')
+    
+    train = transform_to_matrix(kv, trainfile, padding_size=24)
+    test = transform_to_matrix(kv, testfile, padding_size=24)
+
+    np.save("model/dump/Xcnn" + str(size) + ".npy",train)
+    np.save("model/dump/Testcnn" + str(size) + ".npy", test)
+    
+    trainfile.close()
+    testfile.close()
+def dump_tfidf_data():
     tfidf_vec = joblib.load("model/dump/tfidf_vec.vec")
     
-    res = tfidf_vec.transform(file)
-    joblib.dump(res, outputpath)
+    trainfile = open("model/train.csv")
+    testfile = open("model/test.csv")
+
+    y = joblib.load("model/dump/y.data")
+
+    train = tfidf_vec.transform(trainfile)
+    test = tfidf_vec.transform(testfile)
+
+    # 用 卡方分布 选择特征
+    # print("开始用卡方分布筛选特征...",end='')
+    # model = SelectKBest(chi2, k=20000)
+    # model.fit(train, y)
     
-    file.close()
+    # print("完成")
+    # joblib.dump(model,"model/dump/feature_selected_20000.chi")
+    model = joblib.load("model/dump/feature_selected_20000.chi")
+
+    trainfile.close()
+    testfile.close()
+
+    train = model.transform(train)
+    test = model.transform(test)
+    np.save("model/dump/X.npy", train)
+    np.save("model/dump/Test.npy", test)
 
 
 def dump_tfidf_vec(outpath):
     # trainfile = open("model/train.csv")
     # testfile = open("model/test.csv")
-
     corpus = open("model/corpus.csv")
     print("数据初始化完毕,训练中 ")
     tfidf_vec = TfidfVectorizer()
 
+    # tfidf_vec.fit(corpus)
+    # 所有可获得数据的 tfidf 向量,用于chi2特征选择
     tfidf_vec.fit(corpus)
+
     print("训练完成")
+
     joblib.dump(tfidf_vec, outpath)
     corpus.close()
+    
+    trainfile = open("model/train.csv")
+    testfile = open("model/test.csv")
+
+    y = joblib.load("model/dump/y.data")
+
+    train = tfidf_vec.transform(trainfile)
+    test = tfidf_vec.transform(testfile)
+
+    # 用 卡方分布 选择特征
+    # print("开始用卡方分布筛选特征...",end='')
+    # model = SelectKBest(chi2, k=20000)
+    # model.fit(train, y)
+    
+    # print("完成")
+    # joblib.dump(model,"model/dump/feature_selected_20000.chi")
+    model = joblib.load("model/dump/feature_selected_20000.chi")
+
+    trainfile.close()
+    testfile.close()
+
+    np.save("model/dump/X.npy", model.transform(train))
+    np.save("model/dump/Test.npy", model.transform(test))
+    
 if __name__ == "__main__":
-    # dump_word2vec_model(size=256)
-    # dump_Cnn_data(file = "model/train.csv",size=256)
-    dump_Cnn_data(file = "model/test.csv",size=256)
+    # dump_word2vec_model(size=128)
+    # dump_Cnn_data(size=128)
 
 
     # dump_tfidf_vec("model/dump/tfidf_vec.vec")
-    # dump_tfidf_data("model/train.csv","model/dump/X.data")
+    dump_tfidf_data()
     # dump_tfidf_data("model/test.csv","model/dump/Test.data")
