@@ -69,8 +69,10 @@ def cutTestData():
     file.close()
     print("分词完成")
 def main():
+    # 加载用户 词语
     init_jieba()
+    # 对训练集和测试集数据切分
     cutTestData()
-    # cutTrainData()
+    cutTrainData()
 if __name__ == "__main__":
     main()

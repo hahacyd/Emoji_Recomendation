@@ -5,7 +5,8 @@ from sklearn.svm import LinearSVC
 from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.externals import joblib
-from sklearn.model_selection import train_test_split,cross_val_score
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.metrics import f1_score
 from labelencode import KaggleLabelEncode
 import time
 def stopwordslist(filepath):  
@@ -33,23 +34,30 @@ def main():
     print("数据预处理完成")
     
     file.close()
-    # clf = MultinomialNB()
 
     print("开始训练")
+    # 产生训练集和验证集
+    transformer = joblib.load("model/dump/tfidf_vec.vec")
+    X = transformer.transform(X)
+    trainX, testX, trainy, testy = train_test_split(X, y, shuffle=True, test_size=0.2, random_state=42)
+    
     time_start = time.time()
 
     # clf = SGDClassifier(alpha=1e-3,random_state=42, n_jobs=2,max_iter=5)
-    # clf = MultinomialNB()
+    clf = MultinomialNB()
     # clf = LinearSVC(dual=False, verbose=1)
     # clf = DecisionTreeClassifier()
      
-    # clf.fit(X, y)
+    clf.fit(trainX,trainy)
     # joblib.dump(clf,"model/dump/svm_emotion.pkl")
-    scores=cross_val_score(clf, X, y, cv=5, verbose=1)
+    # scores=cross_val_score(clf, X, y, cv=5, verbose=1)
+    record = clf.predict(testX)
+
+    fina_score = f1_score(testy,record,average='micro')
     
     time_end=time.time()
     
-    print(scores)
+    print("scores = %.5f"%(fina_score))
     # clf = load_clf("model/dump/svm_emotion.pkl")
     # print("训练完成")
     print("测试完成 , 用时 %.5f 秒"%(time_end - time_start))
