@@ -8,14 +8,19 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_selection import SelectKBest,chi2
 import numpy as np
 def dump_label():
+    # 训练编码器
+    le = KaggleLabelEncode()
+    le.loaddict("ingredients/emoji.data")
+
     labelfile = open('ingredients/train.solution')
     sentence = labelfile.read()
     labellist = sentence.splitlines()
     # 将 solutions 中标签外的 {} 去除
     labellist = [x.strip("{}") for x in labellist]
-    le = joblib.load("dump/le.le")
+
     y = le.transform(labellist)
-    joblib.dump(y, "dump/y.data")
+    # 将已编码的 类别标签保存 以备使用
+    np.save("dump/y.npy",np.array(y))
 def dump_word2vec_model(size):
     # train_file = open("train.csv")
     # test_file = open("test.csv")
@@ -119,5 +124,6 @@ if __name__ == "__main__":
 
 
     # dump_tfidf_vec("dump/tfidf_vec.vec")
-    dump_tfidf_data()
+    # dump_tfidf_data()
     # dump_tfidf_data("test.csv","dump/Test.data")
+    dump_label()

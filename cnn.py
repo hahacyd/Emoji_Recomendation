@@ -1,70 +1,55 @@
+import math
+import time
+import warnings
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data as Data
+from gensim.models import word2vec
 from sklearn.externals import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.metrics import f1_score
+from sklearn.model_selection import cross_val_score, train_test_split
 
-from labelencode import KaggleLabelEncode
-from gensim.models import word2vec,KeyedVectors
-from word2vec_lac import getCnnTrainData
-import time
-import math
+from kaggle_preprocessing import getTarget,getEmbed_lookup
+# from labelencode import KaggleLabelEncode
+# from word2vec_lac import getCnnTrainData
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 if torch.cuda.is_available():
-    print("gpu")
+    print("使用 gpu")
 else:
-    print("cpu")
+    print("使用 cpu")
 # device = torch.device("cpu")
-def batch_data(X,batch_size = 100):
-    length = X.shape[0]
-    for_times = math.floor(length / 100)
-
-    for i in range(for_times):
-        yield X[i * batch_size:(i + 1) * batch_size]
-    yield X[for_times * batch_size :]
-def getEmbed_lookup(size):
-    kv = KeyedVectors.load("dump/word2vec_" + str(size) + "d.kv",mmap='r')
-    print("词表加载成功，维度 %d * %d"%(len(kv.vocab) ,kv.vector_size))
-    return kv
-def stopwordslist(filepath):  
-    stopwords = [line.strip() for line in open(filepath, 'r', encoding='utf-8').readlines()]  
-    return stopwords
-def kaggle_preprocessing(size):
-    X = np.load("dump/Xcnn"+str(size) + ".npy")
-    y = joblib.load("dump/y.data")
-    y = np.array(y)
-    y = y.astype(np.int32)
-    print("数据预处理完成")
-    return X,y
-class SentimentCNN(nn.Module):
+# 过滤 smart_open 库中的一条warning：UserWarning
+warnings.filters = [UserWarning]
+class CNN(nn.Module):
     """
-    The embedding layer + CNN model that will be used to perform sentiment analysis.
+    The embedding layer + CNN model that will be used to perform sentence classification.
     """
     def __init__(self, embed_model, vocab_size, output_size, embedding_dim,
                  num_filters=100, kernel_sizes=[3, 4, 5], freeze_embeddings=True, drop_prob=0.5):
         """
         Initialize the model by setting up the layers.
         """
-        super(SentimentCNN, self).__init__()
+        super(CNN, self).__init__()
 
         # set class vars
         self.num_filters = num_filters
         self.embedding_dim = embedding_dim
         
-        # 1. embedding layer
+        # 1. embedding layer 
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        # set weights to pre-trained
+        # set weights to pre-trained ,将 已训练的word2vec模型传入,用于 分批将训练数据展开,详情如报告所示
         self.embedding.weight = nn.Parameter(torch.from_numpy(embed_model.vectors)) # all vectors
         # (optional) freeze embedding weights
         if freeze_embeddings:
             self.embedding.requires_grad = False
         
-        # 2. convolutional layers
+        # 2. convolutional layers 卷积层设置，神经元个数为 num_filters * len(kernel_sizes)
         self.conv2d = nn.ModuleList([
             nn.Conv2d(1, num_filters, (k, embedding_dim), padding=(k-2,0)) 
             for k in kernel_sizes])
@@ -72,8 +57,10 @@ class SentimentCNN(nn.Module):
         # 3. final, fully-connected layer for classification
         self.fc = nn.Linear(len(kernel_sizes) * num_filters, output_size) 
         
-        # 4. dropout and sigmoid layers
+        # 4. dropout and softmax layers
         self.dropout = nn.Dropout(drop_prob)
+
+        # softmax 去除后 效果更好
         # self.softmax = nn.Softmax()
     def conv_and_pool(self, x, conv):
         """
@@ -83,6 +70,7 @@ class SentimentCNN(nn.Module):
         # conv_seq_length will be ~ 200
         x = conv(x)
         x = F.relu(x)
+        # 卷积后最后 一轴大小将变为 1
         x = x.squeeze(3)
         
         # 1D pool over conv_seq_length
@@ -96,8 +84,7 @@ class SentimentCNN(nn.Module):
         Defines how a batch of inputs, x, passes through the model layers.
         Returns a single, sigmoid-activated class score as output.
         """
-        # embedded vectors
-        # x = torch.LongTensor(x)
+        # embedded vectors 用于展开输入数据
         embeds = self.embedding(x) # (batch_size, seq_length, embedding_dim)
         # embeds.unsqueeze(1) creates a channel dimension that conv layers expect
         embeds = embeds.unsqueeze(1)
@@ -109,16 +96,12 @@ class SentimentCNN(nn.Module):
         x = torch.cat(conv_results, 1)
         x = self.dropout(x)
         
-        # 这里是一个测试 100 * 100 * 2
-        # x = torch.reshape(x,(x.size(0),x.size(1) * x.size(2)))
-        # final logit
-        logit = self.fc(x) 
+        res = self.fc(x) 
         
-        # sigmoid-activated --> a class score
-        # return self.softmax(logit)
-        return logit
+        # return self.softmax(res)
+        return res
 
-vector_size = 128
+vector_size = 64
 embed_lookup = getEmbed_lookup(size=vector_size)
 
 vocab_size = len(embed_lookup.vocab)
@@ -127,10 +110,15 @@ embedding_dim = embed_lookup.vector_size
 num_filters = 100
 kernel_sizes = [3,4,5]
 
-BATCH_SIZE=100
-X, y = kaggle_preprocessing(size=vector_size)
+BATCH_SIZE = 100
+X = np.load("dump/Xcnn"+str(vector_size) + ".npy")
+# y = joblib.load("dump/y.data")
+# y = np.array(y)
+# y = y.astype(np.int32)
+y = getTarget()
+print("数据预处理完成")
 trainX, testX, trainy, testy = train_test_split(X, y, test_size=0.2, random_state=42)
-net = SentimentCNN(embed_lookup,vocab_size,output_size,embedding_dim,kernel_sizes=kernel_sizes)
+net = CNN(embed_lookup,vocab_size,output_size,embedding_dim,kernel_sizes=kernel_sizes)
 
 net = net.to(device)
 def train_CNN():
@@ -140,14 +128,12 @@ def train_CNN():
 
     optimizer = optim.Adam(net.parameters())
     
-    net.train()
 
- 
     running_loss = 0.0  
 
     max_score = -1
     for epoch in range(9):
-
+        net.train()
         dataset = Data.TensorDataset(torch.from_numpy(trainX).long(),torch.from_numpy(trainy).long())
         data_loader = Data.DataLoader(dataset, shuffle=True, batch_size=BATCH_SIZE)
 
@@ -172,8 +158,8 @@ def train_CNN():
         if temp_score > max_score:
             max_score = temp_score
         elif temp_score < max_score:
-            torch.save(net,"dump/net_345_128_adam_1.model")
-    torch.save(net,"dump/net_345_128_adam_2.model")
+            torch.save(net,"dump/net_345_64_adam_1.model")
+    torch.save(net,"dump/net_345_64_adam_2.model")
 
 def test_CNN():
     model = net
@@ -218,5 +204,3 @@ def main():
     # test_CNN()
 if __name__ == "__main__":
     main()
-    # for x in batch_data(testX):
-    #     print(x.shape)
