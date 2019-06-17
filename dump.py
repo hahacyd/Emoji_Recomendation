@@ -1,32 +1,37 @@
-from sklearn.externals import joblib
-# from gensim.models import word2vec
-from gensim.models.word2vec import Word2Vec
-from gensim.models import word2vec,KeyedVectors
-from word2vec_lac import sentence2index,sentence2vecter
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.feature_selection import SelectKBest,chi2
 import numpy as np
+from gensim.models import KeyedVectors, word2vec
+from gensim.models.word2vec import Word2Vec
+from sklearn.externals import joblib
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_selection import SelectKBest, chi2
+
+from word2vec_lac import sentence2index, sentence2vecter
+
+
 class KaggleLabelEncode(object):
     """
     对 kaggle 做的一个labelEncoder
 
     transform 和 inverse_transform 与sklearn 提供的labelEncoder用法相同
     """
+
     def __init__(self):
         self.index2value = {}
         self.value2index = {}
         # self.loaddict('emoji.data')
+
     def loaddict(self, path):
         """ 
         从文件 中获得 编码方式，这里仅仅指 emoji.data 文件中的编码方式
-        """ 
+        """
         file = open(path, mode='r')
         for line in file:
             sp = line.split()
             self.index2value[int(sp[0])] = sp[1]
-        self.value2index = {v:k for k,v in self.index2value.items()}
+        self.value2index = {v: k for k, v in self.index2value.items()}
         # self.value2index = dict(zip(self.index2value.values(),self.index2value.keys()))
         file.close()
+
     def transform(self, value):
         """ 
         将 字符 转换为 编码，实际上就是emoji.data中 表情所对应的数字
@@ -56,11 +61,14 @@ class KaggleLabelEncode(object):
         elif type(index) == int:
             result = self.index2value[index]
         return result
+
     def dict_check(self):
         """
         检查这个编码器是否能工作，通过检查loaddict是否已被运行
         """
         return len(self.index2value) > 0
+
+
 def dump_label():
     """ 
     将训练数据编码，并把结果 dump 到磁盘上
@@ -78,16 +86,29 @@ def dump_label():
     y = le.transform(labellist)
     # 将已编码的 类别标签保存 以备使用
     np.save("dump/y.npy", np.array(y))
-    
+
     return np.array(y)
+
+
 def dump_word2vec_model(size):
+    """ 
+    生成 维度为 size 大小的词向量模型，并存储到磁盘中
+
+    Parameters:
+    -----------
+    size : 词向量维度
+
+    Return :
+    --------
+    已训练的词向量
+    """
     # train_file = open("train.csv")
     # test_file = open("test.csv")
     corpus = open("corpus.csv")
     sentence = word2vec.LineSentence(corpus)
-    print("size = %d 预处理完毕 开始训练..."%(size))
+    print("size = %d 预处理完毕 开始训练..." % (size))
 
-    model = word2vec.Word2Vec(sentences=sentence,size = size,min_count=0)
+    model = word2vec.Word2Vec(sentences=sentence, size=size)
 
     print("训练结束")
     # model.save("dump/word2vec_" + str(size) + "d.model")
@@ -95,6 +116,8 @@ def dump_word2vec_model(size):
 
     corpus.close()
     return model.wv
+
+
 def dump_Cnn_data(size):
     """ 
     生成 Cnn 所需要的训练和测试数据，并将这些数据 dump 到磁盘上
@@ -107,37 +130,44 @@ def dump_Cnn_data(size):
     --------
     np.ndarray, shape = (n_samples,size)
     """
-    print("size = %d"%(size))
+    print("size = %d" % (size))
     trainfile = open("train.csv")
     testfile = open("test.csv")
 
     kv = KeyedVectors.load("dump/word2vec_" + str(size) + "d.kv", mmap='r')
-    
+
     train = sentence2index(kv, trainfile, padding_size=24)
     test = sentence2index(kv, testfile, padding_size=24)
 
-    np.save("dump/Xcnn" + str(size) + ".npy",train)
+    np.save("dump/Xcnn" + str(size) + ".npy", train)
     np.save("dump/Testcnn" + str(size) + ".npy", test)
-    
+
     trainfile.close()
     testfile.close()
-    return train,test
+    return train, test
+
+
 def dump_Mlp_data(size):
-    print("size = %d"%(size))
+    print("size = %d" % (size))
     trainfile = open("train.csv")
     testfile = open("test.csv")
     kv = KeyedVectors.load("dump/word2vec_" + str(size) + "d.kv", mmap='r')
-    
+
     train = sentence2vecter(kv, trainfile)
     test = sentence2vecter(kv, testfile)
-    
-    np.save("dump/Xmlp" + str(size) + ".npy",train)
+
+    np.save("dump/Xmlp" + str(size) + ".npy", train)
     np.save("dump/Testmlp" + str(size) + ".npy", test)
 
     trainfile.close()
     testfile.close()
-    return train,test
+    return train, test
+
+
 def dump_tfidf_data():
+    """ 
+    返回 svm NaiveBayes算法所需的训练数据
+    """
     corpus = open("corpus.csv")
     print("数据初始化完毕,训练中 ")
     tfidf_vec = TfidfVectorizer()
@@ -147,7 +177,7 @@ def dump_tfidf_data():
 
     print("tfidf 特征提取模型 训练完成")
     # tfidf_vec = joblib.load("dump/tfidf_vec.vec")
-    
+
     trainfile = open("train.csv")
     testfile = open("test.csv")
 
@@ -158,10 +188,10 @@ def dump_tfidf_data():
     test = tfidf_vec.transform(testfile)
 
     # 用 卡方分布 选择特征
-    print("开始用卡方分布筛选特征...",end='')
+    print("开始用卡方分布筛选特征...", end='')
     model = SelectKBest(chi2, k=20000)
     model.fit(train, y)
-    
+
     print("完成")
     # joblib.dump(model,"dump/feature_selected_20000.chi")
     # model = joblib.load("dump/feature_selected_20000.chi")
@@ -174,12 +204,14 @@ def dump_tfidf_data():
     np.save("dump/X.npy", train)
     np.save("dump/Test.npy", test)
 
-    return train,test
+    return train, test
+
+
 if __name__ == "__main__":
     # dump_word2vec_model(size=64)
-    # dump_Cnn_data(size=64)
+    dump_Cnn_data(size=64)
 
     # dump_tfidf_data()
     # dump_tfidf_data("test.csv","dump/Test.data")
     # dump_label()
-    dump_Mlp_data(64)
+    # dump_Mlp_data(64)

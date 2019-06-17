@@ -1,15 +1,21 @@
 import jieba
 
-def stopwordslist(filepath):  
-    stopwords = [line.strip() for line in open(filepath, 'r', encoding='utf-8').readlines()]  
+
+def stopwordslist(filepath):
+    stopwords = [line.strip() for line in open(
+        filepath, 'r', encoding='utf-8').readlines()]
     return stopwords
+
+
 def init_jieba():
     jieba.enable_parallel(3)
     jieba.load_userdict("ingredients/userdict.txt")
+
+
 def cutTrainData():
     input_filename = 'ingredients/train.data'
     output_filename = 'train.csv'
-    print("加载原始数据...",end='')
+    print("加载原始数据...", end='')
     file = open(input_filename)
     sentence = file.read()
     print("完成")
@@ -18,9 +24,9 @@ def cutTrainData():
     print("完成")
 
     seg_list = jieba.cut(sentence)
-    
-    print("分词完成，正在写入文件 %s" %(output_filename))
-    storefile = open(output_filename,mode='w')
+
+    print("分词完成，正在写入文件 %s" % (output_filename))
+    storefile = open(output_filename, mode='w')
     storetext = ''
     for x in seg_list:
         if x == '\n':
@@ -35,11 +41,13 @@ def cutTrainData():
     storefile.close()
     file.close()
     print("分词完成")
+
+
 def cutTestData():
     input_filename = 'ingredients/test.data'
     output_filename = 'test.csv'
     print("加载原始数据...", end='')
-    
+
     file = open(input_filename)
     sentence = ''
     # sentence = file.read()
@@ -52,8 +60,8 @@ def cutTestData():
     print("完成")
 
     seg_list = jieba.cut(sentence)
-    print("分词完成，正在写入文件 %s" %(output_filename))
-    storefile = open(output_filename,mode='w')
+    print("分词完成，正在写入文件 %s" % (output_filename))
+    storefile = open(output_filename, mode='w')
     storetext = ''
     for x in seg_list:
         if x == '\n':
@@ -63,16 +71,20 @@ def cutTestData():
             continue
         else:
             storetext += x + ' '
-            
+
     storefile.write(storetext)
     storefile.close()
     file.close()
     print("分词完成")
+
+
 def main():
     # 加载用户 词语
     init_jieba()
     # 对训练集和测试集数据切分
     cutTestData()
     cutTrainData()
+
+
 if __name__ == "__main__":
     main()
