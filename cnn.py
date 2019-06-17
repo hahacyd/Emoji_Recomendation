@@ -14,7 +14,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import f1_score
 from sklearn.model_selection import cross_val_score, train_test_split
 
-from kaggle_preprocessing import getTarget,getEmbed_lookup
+from kaggle_preprocessing import getTarget,getEmbed_lookup,getCnn_Data
 # from labelencode import KaggleLabelEncode
 # from word2vec_lac import getCnnTrainData
 
@@ -25,7 +25,7 @@ else:
     print("使用 cpu")
 # device = torch.device("cpu")
 # 过滤 smart_open 库中的一条warning：UserWarning
-warnings.filters = [UserWarning]
+warnings.filterwarnings("ignore")
 class CNN(nn.Module):
     """
     The embedding layer + CNN model that will be used to perform sentence classification.
@@ -111,10 +111,10 @@ num_filters = 100
 kernel_sizes = [3,4,5]
 
 BATCH_SIZE = 100
-X = np.load("dump/Xcnn"+str(vector_size) + ".npy")
 # y = joblib.load("dump/y.data")
 # y = np.array(y)
 # y = y.astype(np.int32)
+X = getCnn_Data(vector_size)
 y = getTarget()
 print("数据预处理完成")
 trainX, testX, trainy, testy = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -132,7 +132,7 @@ def train_CNN():
     running_loss = 0.0  
 
     max_score = -1
-    for epoch in range(9):
+    for epoch in range(8):
         net.train()
         dataset = Data.TensorDataset(torch.from_numpy(trainX).long(),torch.from_numpy(trainy).long())
         data_loader = Data.DataLoader(dataset, shuffle=True, batch_size=BATCH_SIZE)

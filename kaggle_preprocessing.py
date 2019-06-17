@@ -1,6 +1,8 @@
 from sklearn.externals import joblib
 from gensim.models import KeyedVectors
 import numpy as np
+from dump import dump_Cnn_data,dump_label
+
 def getTrain_Tfidf_Data():
     """
     返回 tfidf 特征化的训练数据
@@ -19,7 +21,17 @@ def getTarget():
     -------
     np.ndarray ,shape = (n_samples,)
     """ 
-    return np.load("dump/y.npy")
+    try:
+        y = np.load("dump/y.npy")
+    except:
+        y = dump_label()
+    return y
+def getCnn_Data(vector_size):
+    try:
+        X = np.load("dump/Xcnn"+str(vector_size) + ".npy")
+    except:
+        X, Xtest = dump_Cnn_data(vector_size)
+    return X
 def getEmbed_lookup(size):
     """ 
     返回 文件中 保存的词向量,当相应的模型不存在时，将调用训练函数训练并返回此模型

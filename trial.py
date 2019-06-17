@@ -7,11 +7,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.externals import joblib
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import f1_score
-from labelencode import KaggleLabelEncode
 import time
-def stopwordslist(filepath):  
-    stopwords = [line.strip() for line in open(filepath, 'r', encoding='utf-8').readlines()]  
-    return stopwords
+
 def fit(X, y):
     # clf = MultinomialNB()
     clf = SGDClassifier(loss='hinge', penalty='l2',alpha=1e-3, random_state=42,max_iter=5, tol=None)

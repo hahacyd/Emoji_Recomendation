@@ -2,7 +2,49 @@ from gensim.models import word2vec
 from gensim.models import KeyedVectors
 import numpy as np
 from sklearn.externals import joblib
-def transform_to_matrix(kv, x, padding_size):
+def sentence2vecter(kv, x):
+    """ 
+    将 sentence 转成一个词向量，这个词向量产生于将 sentence 中所有词的词向量相加，然后平均
+
+    Parameters:
+    -----------
+    kv : word2vec 模型
+    x : raw_document 训练数据集, 
+
+    Return:
+    -------
+    np.ndarray , shape = (n_samples,dimensions), dimensions 是 kv 模型中词向量的维数
+    """
+    lines = x.readlines()
+    line_num = len(lines)
+
+    vector_size = kv.vector_size
+    result = np.zeros((line_num, vector_size))
+
+    sentence = []
+    temp = np.zeros(vector_size)
+    print("开始转换...", end = '')
+    ignore_count = 0
+    for i,line in enumerate(lines,0):
+        print("\r%d/%d" % (i, line_num), end='')
+        
+        sentence.clear()
+        sentence.extend(line.split())
+        temp *= 0
+        for word in sentence:
+            try:
+                temp += kv[word]
+            except:
+                # print("模型中没有词语 %s"%(word))
+                temp += 0
+                ignore_count +=1
+        # 取词向量之和的平均值
+        if len(sentence) != 0 :
+            temp = temp / len(sentence)
+        result[i] = temp
+    print("\n%d 个词被忽略"%(ignore_count))
+    return result       
+def sentence2index(kv, x, padding_size):
     """
     将数据集 x 中的每个sentence中的词语替换为其在 word2vec 模型中的index
     
@@ -18,11 +60,11 @@ def transform_to_matrix(kv, x, padding_size):
     
     Return:
     -------
-    np.ndarray 类型，shape = (n_samples,n_features)
+    np.ndarray 类型，shape = (n_samples,n_featuresult)
     """
     lines = x.readlines()
     line_num = len(lines)
-    res = np.zeros((line_num, padding_size))
+    result = np.zeros((line_num, padding_size))
     sentence = []
     print("开始转换...",end='')
     for i in range(len(lines)):
@@ -34,14 +76,14 @@ def transform_to_matrix(kv, x, padding_size):
             if j >= padding_size:
                 break 
             try:
-                res[i, j] = kv.vocab[sentence[j]].index
+                result[i, j] = kv.vocab[sentence[j]].index
             except:
                 print("模型中没有词语 %s, 将自动补0"%(sentence[j]))
-    return res    
+    return result    
 def getCnnTrainData():
     file = open("train.csv")
     model = word2vec.Word2Vec.load("dump/word2vec_32d.model")
-    inputs = transform_to_matrix(model, file, padding_size=12)
+    inputs = sentence2index(model, file, padding_size=12)
     # joblib.dump(inputs, "dump/Xcnn.csv")
     np.save("dump/Xcnn.npy",inputs)
     file.close()
