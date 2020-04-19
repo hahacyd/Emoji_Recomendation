@@ -118,9 +118,6 @@ num_filters = 100
 kernel_sizes = [3, 4, 5]
 
 BATCH_SIZE = 100
-# y = joblib.load("dump/y.data")
-# y = np.array(y)
-# y = y.astype(np.int32)
 X = getCnn_Data(vector_size)
 y = getTarget()
 print("数据预处理完成")
@@ -132,9 +129,7 @@ net = CNN(embed_lookup, vocab_size, output_size,
 net = net.to(device)
 
 
-def train_CNN():
-
-    # print(net)
+def train_CNN(train_epoch=2):
     criterion = nn.CrossEntropyLoss()
 
     optimizer = optim.Adam(net.parameters())
@@ -142,7 +137,7 @@ def train_CNN():
     running_loss = 0.0
 
     max_score = -1
-    for epoch in range(8):
+    for epoch in range(train_epoch):
         net.train()
         dataset = Data.TensorDataset(torch.from_numpy(
             trainX).long(), torch.from_numpy(trainy).long())
@@ -167,7 +162,7 @@ def train_CNN():
                     dataset) / (intervel * BATCH_SIZE), running_loss/BATCH_SIZE))
                 running_loss = 0.0
 
-        temp_score = test_CNN()
+        # temp_score = test_CNN()
     #     if temp_score > max_score:
     #         max_score = temp_score
     #     elif temp_score < max_score:
@@ -202,11 +197,11 @@ def test_CNN():
         score += f1_score(labels, ypred, average='micro')
         intervel = 100
         if batch_index != 0 and batch_index % intervel == 0:
-            print("[ %d/%d ] score = %f" % (batch_index / intervel,
+            print("[ %d/%d ] score = %g" % (batch_index / intervel,
                                             len(dataset) / (intervel * BATCH_SIZE), score / BATCH_SIZE))
             score = 0
     fina_score = f1_score(testy, record, average='micro')
-    print("总f1_score = %.5f" % (fina_score))
+    print("总f1_score = %.5g" % (fina_score))
     return fina_score
 
 
@@ -214,12 +209,12 @@ def main():
     print("开始训练")
     start_time = time.time()
 
-    train_CNN()
+    train_CNN(1)
 
     end_time = time.time()
     print("训练完成,用时 %.5f mins" % ((end_time - start_time)/60))
-
-
+    
+    print("开始验证")
     test_CNN()
 if __name__ == "__main__":
     main()

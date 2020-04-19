@@ -1,0 +1,5 @@
+submit
+dump
+*.pyc
+.vscode
+__pycache__
