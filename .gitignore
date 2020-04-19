@@ -1,5 +1,5 @@
-submit
-dump
+submit/*
+dump/*
 *.pyc
 .vscode
 __pycache__
